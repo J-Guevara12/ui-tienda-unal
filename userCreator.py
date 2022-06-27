@@ -12,5 +12,5 @@ from hashlib import sha256
 
 h = sha256()
 h.update(b'123456')
-consigna = f"INSERT INTO USUARIOS VALUES( 1002655776, '{h.hexdigest()}', 0, 0, 'Juan Esteban Guevara Roncancio' );"
+consigna = f"INSERT INTO USUARIOS VALUES( 1002655776, '{h.hexdigest()}', 2, 0, 'Juan Esteban Guevara Roncancio' );"
 print(consigna)

@@ -13,8 +13,8 @@ class Login(Ui_MainWindow):
         self.loginButton.clicked.connect(lambda: self.iniciarSesion())
 
         #Erase this please
-        self.MainWindow.usuario =  crearUsuario(str(1002655778),self.cur,self.MainWindow.conexion)
-        self.MainWindow.listaProductos.setupUi(self.MainWindow)
+        #self.MainWindow.usuario =  crearUsuario(str(1002655778),self.cur,self.MainWindow.conexion)
+        #self.MainWindow.listaProductos.setupUi(self.MainWindow)
 
     def retranslateUi(self,MainWindow):
         super().retranslateUi(MainWindow)
