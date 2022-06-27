@@ -2,6 +2,7 @@ from .ViewLogin import Ui_MainWindow
 from PyQt5.QtCore import pyqtSlot 
 from hashlib import sha256
 from ..models.Usuarios import crearUsuario
+from ..models.ConexionDB import ConexionDB
 
 
 class Login(Ui_MainWindow):
@@ -23,11 +24,13 @@ class Login(Ui_MainWindow):
     def iniciarSesion(self):
         h = sha256()
         h.update(self.contrasena.text().encode())
-        consigna = f"SELECT ID FROM USUARIOS WHERE CONTRASEÑA='{h.hexdigest()}'"
-        self.cur.execute(consigna)
-        for register in self.cur:
-            if(self.usuario.text()==str(register[0])):
-                self.MainWindow.usuario =  crearUsuario(str(register[0]),self.cur,self.conexion)
-                self.MainWindow.listaProductos.setupUi(self.MainWindow)
-                return
-        self.mensajeError.setText('Error, usuario o contraseña incorrectos')
+        conn = ConexionDB('http://127.0.0.1:5000')
+        #conn = ConexionDB('https://backend-tienda-unal.herokuapp.com')
+        data = {'usuario': str(self.usuario.text()),'contrasena': str(h.hexdigest())}
+        res = conn.get(f'/iniciar-sesion/{data["usuario"]}/{data["contrasena"]}')
+        if res['status']:
+            self.MainWindow.usuario =  crearUsuario(self.usuario.text(),self.cur,self.conexion)
+            self.MainWindow.listaProductos.setupUi(self.MainWindow)
+            return
+        else:
+            self.mensajeError.setText('Error, usuario o contraseña incorrectos')
