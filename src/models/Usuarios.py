@@ -14,11 +14,9 @@ from .ConexionDB import ConexionDB
 conn = ConexionDB('https://backend-tienda-unal.herokuapp.com')
 
 class Usuario:
-    def __init__(self,usuario,nombre,cur,conexion):
+    def __init__(self,usuario,nombre):
         self.id = usuario
         self.nombre = nombre
-        self.cur = cur
-        self.conexion = conexion
 
     def loadListaProductos(self,view):
         self.view = view
@@ -128,8 +126,8 @@ class UsuarioAutorizado(Usuario):
 
 
 class UsuarioSysAdmin(UsuarioAutorizado):
-    def __init__(self,usuario,nombre,cur,conexion):
-        super().__init__(usuario,nombre,cur,conexion)
+    def __init__(self,usuario,nombre):
+        super().__init__(usuario,nombre)
 
     def loadListaProductos(self,view):
         super().loadListaProductos(view)
@@ -185,8 +183,8 @@ class UsuarioSysAdmin(UsuarioAutorizado):
 
 
 class UsuarioAdministrativo(UsuarioAutorizado):
-    def __init__(self,usuario,nombre,cur,conexion):
-        super().__init__(usuario,nombre,cur,conexion)
+    def __init__(self,usuario,nombre):
+        super().__init__(usuario,nombre)
         res = conn.get(f'/sede-trabajo/{usuario}/')
 
         for reg in res:
@@ -240,8 +238,8 @@ class UsuarioAdministrativo(UsuarioAutorizado):
 
 
 class UsuarioVendedor(Usuario):
-    def __init__(self,usuario,nombre,cur,conexion):
-        super().__init__(usuario,nombre,cur,conexion)
+    def __init__(self,usuario,nombre):
+        super().__init__(usuario,nombre)
         self.factura = Factura()
         res = conn.get(f'/sede-trabajo/{usuario}/')
         for reg in res:
@@ -287,7 +285,7 @@ class UsuarioVendedor(Usuario):
             self.loadListaProductos(self.view)
             self.factura.productos = []
 
-def crearUsuario(ID,cursor,conexion):
+def crearUsuario(ID):
     classes = [UsuarioVendedor,UsuarioAdministrativo,UsuarioSysAdmin]
     nivel = 0
     nombre = ''
@@ -296,4 +294,4 @@ def crearUsuario(ID,cursor,conexion):
         nivel = reg[0]
         nombre = reg[1]
     if(nombre!=''):
-        return classes[nivel](ID,nombre,cursor,conexion)
+        return classes[nivel](ID,nombre)

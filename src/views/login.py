@@ -9,13 +9,11 @@ class Login(Ui_MainWindow):
     def setupUi(self,MainWindow):
         super().setupUi(MainWindow)
         self.MainWindow = MainWindow
-        self.cur = MainWindow.cur
-        self.conexion = MainWindow.conexion
-        self.loginButton.clicked.connect(lambda: self.iniciarSesion())
+        self.loginButton.clicked.connect(self.iniciarSesion)
 
         #Erase this please
-        self.MainWindow.usuario =  crearUsuario(str(1002655780),self.cur,self.MainWindow.conexion)
-        self.MainWindow.listaProductos.setupUi(self.MainWindow)
+        #self.MainWindow.usuario =  crearUsuario(str(1002655780),self.cur,self.MainWindow.conexion)
+        #self.MainWindow.listaProductos.setupUi(self.MainWindow)
 
     def retranslateUi(self,MainWindow):
         super().retranslateUi(MainWindow)
@@ -29,7 +27,7 @@ class Login(Ui_MainWindow):
         data = {'usuario': str(self.usuario.text()),'contrasena': str(h.hexdigest())}
         res = conn.get(f'/iniciar-sesion/{data["usuario"]}/{data["contrasena"]}')
         if res['status']:
-            self.MainWindow.usuario =  crearUsuario(self.usuario.text(),self.cur,self.conexion)
+            self.MainWindow.usuario =  crearUsuario(self.usuario.text())
             self.MainWindow.listaProductos.setupUi(self.MainWindow)
             return
         else:
