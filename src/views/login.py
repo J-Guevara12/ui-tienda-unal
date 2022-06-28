@@ -9,7 +9,7 @@ class Login(Ui_MainWindow):
     def setupUi(self,MainWindow):
         super().setupUi(MainWindow)
         self.MainWindow = MainWindow
-        self.loginButton.clicked.connect(self.iniciarSesion)
+        self.loginButton.clicked.connect(lambda: self.iniciarSesion())
 
         #Erase this please
         #self.MainWindow.usuario =  crearUsuario(str(1002655780),self.cur,self.MainWindow.conexion)
