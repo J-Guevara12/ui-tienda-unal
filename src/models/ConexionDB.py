@@ -7,15 +7,19 @@ class ConexionDB:
         self.url = url
 
     def get(self,accion):
-        flujo = request.urlopen(self.url+accion)
-        return json.loads(flujo.read())
+        #flujo = request.urlopen(self.url+accion)
+        #return json.loads(flujo.read())
+        r = requests.get(self.url+accion)
+        return r.json()
 
     def post(self,accion,data):
-        data = parse.urlencode(data).encode('utf-8')
-        #req =  request.Request(self.url+accion, data=data)
-        resp = request.urlopen(self.url+accion, data=data)
-        print(resp.info())
-        return json.loads(resp.read())
+        r = requests.post(self.url+accion, json=data)
+        return r.json()
 
-conn = ConexionDB('http://127.0.0.1:5000')
-data = {'usuario': '1002655778','contrasena': 123456}
+    def put(self,accion,data):
+        r = requests.put(self.url+accion, json=data)
+        return r.json()
+
+    def delete(self,accion,data):
+        r = requests.delete(self.url+accion,json=data)
+        return r.json()

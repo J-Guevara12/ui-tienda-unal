@@ -34,4 +34,3 @@ class VentanaPrincipal(QMainWindow):
 app = QApplication(sys.argv)
 window = VentanaPrincipal()
 sys.exit(app.exec_())
- 

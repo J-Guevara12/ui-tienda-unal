@@ -14,8 +14,8 @@ class Login(Ui_MainWindow):
         self.loginButton.clicked.connect(lambda: self.iniciarSesion())
 
         #Erase this please
-        #self.MainWindow.usuario =  crearUsuario(str(1002655778),self.cur,self.MainWindow.conexion)
-        #self.MainWindow.listaProductos.setupUi(self.MainWindow)
+        self.MainWindow.usuario =  crearUsuario(str(1002655780),self.cur,self.MainWindow.conexion)
+        self.MainWindow.listaProductos.setupUi(self.MainWindow)
 
     def retranslateUi(self,MainWindow):
         super().retranslateUi(MainWindow)
@@ -24,8 +24,8 @@ class Login(Ui_MainWindow):
     def iniciarSesion(self):
         h = sha256()
         h.update(self.contrasena.text().encode())
-        conn = ConexionDB('http://127.0.0.1:5000')
-        #conn = ConexionDB('https://backend-tienda-unal.herokuapp.com')
+        #conn = ConexionDB('http://127.0.0.1:5000')
+        conn = ConexionDB('https://backend-tienda-unal.herokuapp.com')
         data = {'usuario': str(self.usuario.text()),'contrasena': str(h.hexdigest())}
         res = conn.get(f'/iniciar-sesion/{data["usuario"]}/{data["contrasena"]}')
         if res['status']:

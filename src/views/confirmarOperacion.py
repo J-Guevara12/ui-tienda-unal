@@ -25,11 +25,9 @@ class ConfirmarOperacion(Ui_Dialog):
     def confirmarAccion(self,accion):
         h = sha256()
         h.update(self.contrasena.text().encode())
-        consigna = f"SELECT ID FROM USUARIOS WHERE CONTRASEÑA='{h.hexdigest()}'"
-        self.usuario.cur.execute(consigna)
-        for register in self.usuario.cur:
-            if(self.usuario.id==str(register[0])):
-                accion()
-                self.window.close()
-                return
-        self.mensajeError.setText('contraseña incorrecta')
+        if(self.usuario.confirmarAccion(h.hexdigest())):
+            accion()
+            self.window.close()
+            return
+        else:
+            self.mensajeError.setText('contraseña incorrecta')

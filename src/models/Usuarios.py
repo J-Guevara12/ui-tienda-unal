@@ -9,6 +9,9 @@ from .Proveedor import Proveedor
 from .Botones import BotonBorrar,BotonEditar
 from ..views.facturacion import Facturacion
 from ..views.productosProveedor import ProductosProveedor
+from .ConexionDB import ConexionDB
+
+conn = ConexionDB('https://backend-tienda-unal.herokuapp.com')
 
 class Usuario:
     def __init__(self,usuario,nombre,cur,conexion):
@@ -45,9 +48,8 @@ class UsuarioAutorizado(Usuario):
         view.table.setColumnWidth(5,157)
         view.table.setColumnWidth(6,157)
 
-        self.cur.execute('SELECT * FROM PROVEEDORES')
 
-        proveedores = list(map(lambda reg: Proveedor(*reg),self.cur.fetchall()))
+        proveedores = list(map(lambda reg: Proveedor(*reg),conn.get('/proveedores/')))
         view.table.setRowCount(len(proveedores))
         
         for i,proveedor in enumerate(proveedores):
@@ -57,31 +59,38 @@ class UsuarioAutorizado(Usuario):
             view.table.setCellWidget(i,5,botonEditar)
             view.table.setCellWidget(i,6,botonBorrar)
 
-    def registrarAccion(self,accion):
-        self.cur.execute(f"INSERT INTO REGISTROS_MODIFICACIONES (RESPONSABLE,CAMBIO,FECHA) VALUES ({self.id},'{accion}',datetime('now'))")
-
     def agregarProveedor(self,proveedor):
-        self.registrarAccion(f'AÑADIÓ Proveedor {proveedor.empresa}')
-        self.cur.execute(f"INSERT INTO PROVEEDORES (NIT, NOMBRE_EMPRESA, NOMBRE_CONTACTO,EMAIL_CONTACTO,TELEFONO) VALUES ({proveedor.nit},'{proveedor.empresa}','{proveedor.contacto}','{proveedor.email}',{proveedor.telefono})")
-        self.conexion.commit()
+        data = {
+            'responsable': self.id, 
+            'empresa': proveedor.empresa, 
+            'contacto': proveedor.contacto,
+            'email': proveedor.email,
+            'telefono': proveedor.telefono
+        }
+        conn.post(f'/proveedor/{proveedor.nit}/',data)
         self.loadListaProovedores(self.viewProveedores)
 
-    def editarProveedor(self,proveedor):
-        self.registrarAccion(f'EDITÓ proveedor {proveedor.empresa}')
-        self.cur.execute(f"""UPDATE PROVEEDORES
-                            SET NIT={proveedor.nit}, NOMBRE_EMPRESA = '{proveedor.empresa}', NOMBRE_CONTACTO = '{proveedor.contacto}', 
-                            EMAIL_CONTACTO = '{proveedor.email}', TELEFONO = {proveedor.telefono}
-                            WHERE NIT = {proveedor.nit}
-                         """)
-        self.conexion.commit()
+    def editarProveedor(self,proveedor,nit):
+        data = {
+            'responsable': self.id, 
+            'nit': proveedor.nit,
+            'empresa': proveedor.empresa, 
+            'contacto': proveedor.contacto,
+            'email': proveedor.email,
+            'telefono': proveedor.telefono
+        }
+        conn.put(f'/proveedor/{nit}/',data)
         self.loadListaProovedores(self.viewProveedores)
 
     def borrarProveedor(self,proveedor):
-        self.registrarAccion(f'BORRÓ proveedor {proveedor.empresa}')
-        self.cur.execute(f"""
-                         DELETE FROM PROVEEDORES WHERE NIT={proveedor.nit}
-                         """)
-        self.conexion.commit()
+        data = {
+            'responsable': self.id, 
+            'empresa': proveedor.empresa, 
+            'contacto': proveedor.contacto,
+            'email': proveedor.email,
+            'telefono': proveedor.telefono
+        }
+        conn.delete(f'/proveedor/{proveedor.nit}/',data)
         self.loadListaProovedores(self.viewProveedores)
 
     def cargarProductosProveedor(self,proveedor):
@@ -91,35 +100,31 @@ class UsuarioAutorizado(Usuario):
         self.dialog.show()
 
     def consultarSedes(self):
-        self.cur.execute('SELECT UBICACION, ID_ALMACEN FROM ALMACEN')
-        return self.cur.fetchall()
+        return conn.get('/sedes/')
 
     def consultarExistenciasProducto(self,producto,sede):
-        self.cur.execute(f"""SELECT EXISTENCIAS, EXISTENCIAS_MIN FROM INVENTARIO 
-                                    WHERE ID_PRODUCTO = {producto} AND ID_ALMACEN={sede}""")
-        return self.cur.fetchall()
+        return conn.get(f'/inventario/{producto}/{sede}')
 
     def consultarProductosProveedor(self,proveedor):
-        self.cur.execute(f"""SELECT PRODUCTOS.ID_PRODUCTO, NOMBRE, PRECIO FROM PRODUCTOS  
-                         INNER JOIN PRODUCTOS_PROVEEDOR ON PRODUCTOS.ID_PRODUCTO = PRODUCTOS_PROVEEDOR.ID_PRODUCTO 
-                         WHERE PRODUCTOS_PROVEEDOR.ID_PROVEEDOR = {proveedor.nit}""")
-        return list(map(lambda reg: Producto(*reg),self.cur.fetchall()))
+        return list(map(lambda reg: Producto(*reg),conn.get(f'/productos-proveedor/{proveedor.nit}')))
 
 
     def consultarTodosLosProductos(self):
-        self.cur.execute('SELECT * FROM PRODUCTOS')
-        return list(map(lambda reg: Producto(*reg),self.cur.fetchall()))
+        res = conn.get('/productos/0')
+        return list(map(lambda reg: Producto(*reg),res))
 
     def agregarProductoAProveedor(self,producto,proveedor):
-        self.registrarAccion(f'AÑADIÓ producto {producto.id} A proveedor {proveedor.nit}')
-        self.cur.execute(f"""INSERT INTO PRODUCTOS_PROVEEDOR (ID_PRODUCTO,ID_PROVEEDOR) VALUES ({producto.id}, {proveedor.nit})""")
-        self.conexion.commit()
+        data = {'id': producto.id, 'responsable': self.id}
+        conn.post(f'/productos-proveedor/{proveedor.nit}/',data)
+        self.vistaProductoProveedor.loadProductos()
 
     def eliminarProductoAProveedor(self,producto,proveedor):
-        self.registrarAccion(f'AÑADIÓ producto {producto.id} A proveedor {proveedor.nit}')
-        self.cur.execute(f"""DELETE FROM PRODUCTOS_PROVEEDOR WHERE ID_PRODUCTO={producto.id} AND ID_PROVEEDOR = {proveedor.nit}""")
-        self.conexion.commit()
+        data = {'id': producto.id, 'responsable': self.id}
+        conn.delete(f'/productos-proveedor/{proveedor.nit}/',data)
         self.vistaProductoProveedor.loadProductos()
+
+    def confirmarAccion(self,contrasena):
+        return conn.get(f'/iniciar-sesion/{self.id}/{contrasena}')['status']
 
 
 class UsuarioSysAdmin(UsuarioAutorizado):
@@ -135,9 +140,8 @@ class UsuarioSysAdmin(UsuarioAutorizado):
         view.botonProveedores.setVisible(True)
         view.botonCambios.setVisible(True)
 
-        self.cur.execute('SELECT * FROM PRODUCTOS')
 
-        productos = list(map(lambda reg: Producto(*reg),self.cur.fetchall()))
+        productos = self.consultarTodosLosProductos()
         view.table.setRowCount(len(productos))
         
         for i,producto in enumerate(productos):
@@ -152,10 +156,7 @@ class UsuarioSysAdmin(UsuarioAutorizado):
         view.table.setColumnWidth(0,350)
         view.table.setColumnWidth(1,650)
         view.table.setColumnWidth(2,300)
-        self.cur.execute("""SELECT USUARIOS.NOMBRE, CAMBIO, FECHA 
-                            FROM REGISTROS_MODIFICACIONES INNER JOIN USUARIOS ON 
-                            USUARIOS.ID = REGISTROS_MODIFICACIONES.RESPONSABLE""")
-        acciones = self.cur.fetchall()
+        acciones = conn.get('/registro-acciones/')
         view.table.setRowCount(len(acciones))
         
         for i,accion in enumerate(acciones):
@@ -163,48 +164,32 @@ class UsuarioSysAdmin(UsuarioAutorizado):
                 view.table.setItem(i,j,QTableWidgetItem(accion[j]))
 
     def agregarProducto(self,producto):
-        self.registrarAccion(f'AÑADIÓ producto {producto.nombre}')
-        self.cur.execute(f"INSERT INTO PRODUCTOS (NOMBRE,PRECIO) VALUES ('{producto.nombre}','{producto.precio}')")
-        self.conexion.commit()
+        data = {"nombre": producto.nombre,"precio": producto.precio,"responsable": self.id}
+        conn.post(f'/producto/{producto.id}',data)
         self.loadListaProductos(self.view)
 
     def editarProducto(self,producto):
-        self.registrarAccion(f'EDITÓ producto {producto.id}')
-        self.cur.execute(f"""UPDATE PRODUCTOS
-                            SET NOMBRE='{producto.nombre}', precio={producto.precio}
-                            WHERE ID_PRODUCTO = {producto.id}
-                         """)
-        self.conexion.commit()
+        data = {"nombre": producto.nombre,"precio": producto.precio,"responsable": self.id}
+        conn.put(f'/producto/{producto.id}',data)
         self.loadListaProductos(self.view)
 
     def borrarProducto(self,producto):
-        self.registrarAccion(f'BORRÓ producto {producto.id}')
-        self.cur.execute(f"""
-                         DELETE FROM PRODUCTOS WHERE ID_PRODUCTO={producto.id}
-                         """)
-        self.conexion.commit()
+        data = {"nombre": producto.nombre,"precio": producto.precio,"responsable": self.id}
+        conn.delete(f'/producto/{producto.id}',data)
         self.loadListaProductos(self.view)
-
+        
     def editarInventario(self,producto,sede,cantidad,minimo,existe):
-        self.registrarAccion(f'EDITÓ las existencías producto {producto.id} en la sede {sede}')
-        if existe:
-            self.cur.execute(f"""UPDATE INVENTARIO
-                                SET EXISTENCIAS='{cantidad}', EXISTENCIAS_MIN={minimo}
-                                WHERE ID_PRODUCTO = {producto.id} and ID_ALMACEN={sede}
-                             """)
-        else: 
-            self.cur.execute(f"INSERT INTO INVENTARIO VALUES ({producto.id},{sede},{cantidad},{minimo})")
-
-        self.conexion.commit()
+        data = {"existencias": cantidad, "existencias_min": minimo, "existe": existe,"responsable": self.id}
+        conn.post(f'/inventario/{producto.id}/{sede}/',data)
         self.loadListaProductos(self.view)
 
 
 class UsuarioAdministrativo(UsuarioAutorizado):
     def __init__(self,usuario,nombre,cur,conexion):
         super().__init__(usuario,nombre,cur,conexion)
-        self.cur.execute(f'SELECT SEDE_TRABAJO FROM USUARIOS WHERE ID={self.id}')
+        res = conn.get(f'/sede-trabajo/{usuario}/')
 
-        for reg in self.cur:
+        for reg in res:
             self.sede = reg[0]
 
     def loadListaProductos(self,view):
@@ -216,11 +201,7 @@ class UsuarioAdministrativo(UsuarioAutorizado):
         view.table.setHorizontalHeaderItem(3,QTableWidgetItem('Existencias'))
         view.table.setHorizontalHeaderItem(4,QTableWidgetItem('Mínimo'))
 
-        self.cur.execute(f"""SELECT PRODUCTOS.ID_PRODUCTO , PRODUCTOS.NOMBRE, PRODUCTOS.PRECIO, INVENTARIO.EXISTENCIAS , INVENTARIO.EXISTENCIAS_MIN
-                         FROM PRODUCTOS INNER JOIN INVENTARIO ON 
-                         PRODUCTOS.ID_PRODUCTO = INVENTARIO.ID_PRODUCTO WHERE ID_ALMACEN = {self.sede}""")
-
-        productos = list(map(lambda reg: ProductoInventario(*reg),self.cur.fetchall()))
+        productos = list(map(lambda reg: ProductoInventario(*reg),conn.get(f'/productos/{self.sede}')))
         view.table.setRowCount(len(productos))
 
         for i,producto in enumerate(productos):
@@ -233,8 +214,7 @@ class UsuarioAdministrativo(UsuarioAutorizado):
         self.dialog.show()
 
     def consultarProveedores(self):
-        self.cur.execute('SELECT * FROM PROVEEDORES')
-        return list(map(lambda reg: Proveedor(*reg),self.cur.fetchall()))
+        return list(map(lambda reg: Proveedor(*reg),conn.get('/proveedores/')))
 
     def generarOrdenDeCompra(self,proveedor):
         self.dialog = QDialog()
@@ -245,20 +225,16 @@ class UsuarioAdministrativo(UsuarioAutorizado):
 
     def confirmarCompra(self,proveedor):
         if(len(self.ordenDeCompra.productos)!=0):
-            self.cur.execute(f"""INSERT INTO REGISTROS_COMPRA(PROVEEDOR, RESPONSABLE, FECHA) VALUES({proveedor.nit},{self.id}, datetime('now') )""")
-            self.conexion.commit()
-
-            self.cur.execute(f"""SELECT MAX(ID_OPERACION) FROM REGISTROS_COMPRA WHERE RESPONSABLE={self.id}""")
-            idOperacion = self.cur.fetchall()[0][0]
-
-            for producto in self.ordenDeCompra.productos:
-                self.cur.execute(f"""INSERT INTO MOVIMIENTOS_INVENTARIO_COMPRA (ID_COMPRA, ID_PRODUCTO, CANTIDAD) VALUES({idOperacion},{producto.id},{producto.existencias})""")
-                self.cur.execute(f"""UPDATE INVENTARIO
-                                        SET EXISTENCIAS = EXISTENCIAS + {producto.existencias}
-                                        WHERE ID_PRODUCTO = {producto.id} AND ID_ALMACEN={self.sede}""")
-
-            
-            self.conexion.commit()
+            data = {
+                "responsable": self.id,
+                "sede": self.sede,
+                "proveedor": proveedor.nit,
+                "productos": [ {
+                    "id": x.id,
+                    "cantidad": x.existencias
+                } for x in self.ordenDeCompra.productos ]
+            }
+            conn.post('/orden-de-compra/',data)
             self.loadListaProductos(self.view)
             self.ordenDeCompra.productos = []
 
@@ -267,8 +243,8 @@ class UsuarioVendedor(Usuario):
     def __init__(self,usuario,nombre,cur,conexion):
         super().__init__(usuario,nombre,cur,conexion)
         self.factura = Factura()
-        self.cur.execute(f'SELECT SEDE_TRABAJO FROM USUARIOS WHERE ID={self.id}')
-        for reg in self.cur:
+        res = conn.get(f'/sede-trabajo/{usuario}/')
+        for reg in res:
             self.sede = reg[0]
 
     def loadListaProductos(self,view):
@@ -284,11 +260,7 @@ class UsuarioVendedor(Usuario):
         view.table.setColumnWidth(2,267)
         view.table.setColumnWidth(3,267)
 
-        self.cur.execute(f"""SELECT PRODUCTOS.ID_PRODUCTO , PRODUCTOS.NOMBRE, PRODUCTOS.PRECIO, INVENTARIO.EXISTENCIAS 
-                         FROM PRODUCTOS INNER JOIN INVENTARIO ON 
-                         PRODUCTOS.ID_PRODUCTO = INVENTARIO.ID_PRODUCTO WHERE ID_ALMACEN = {self.sede}""")
-
-        self.productos = list(map(lambda reg: ProductoInventario(*reg),self.cur.fetchall()))
+        self.productos = list(map(lambda reg: ProductoInventario(*reg),conn.get(f'/productos/{self.sede}')))
         view.table.setRowCount(len(self.productos))
 
         for i,producto in enumerate(self.productos):
@@ -303,30 +275,24 @@ class UsuarioVendedor(Usuario):
 
     def confirmarVenta(self):
         if(len(self.factura.productos)!=0):
-            self.cur.execute(f"""INSERT INTO REGISTROS_VENTA(RESPONSABLE, FECHA) VALUES({self.id}, datetime('now') )""")
-            self.conexion.commit()
-
-            self.cur.execute(f"""SELECT MAX(ID_OPERACION) FROM REGISTROS_VENTA WHERE RESPONSABLE={self.id}""")
-            idOperacion = self.cur.fetchall()[0][0]
-
-            for producto in self.factura.productos:
-                print(f"""INSERT INTO MOVIMIENTOS_INVENTARIO_VENTA (ID_VENTA,ID_PRODUCTO,CANTIDAD) VALUES({idOperacion},{producto.id},{producto.existencias})""")
-                self.cur.execute(f"""INSERT INTO MOVIMIENTOS_INVENTARIO_VENTA (ID_VENTA,ID_PRODUCTO,CANTIDAD) VALUES({idOperacion},{producto.id},{producto.existencias})""")
-                self.cur.execute(f"""UPDATE INVENTARIO
-                                        SET EXISTENCIAS = EXISTENCIAS - {producto.existencias}
-                                        WHERE ID_PRODUCTO = {producto.id} AND ID_ALMACEN={self.sede}""")
-
-            
-            self.conexion.commit()
+            data = {
+                "responsable": self.id,
+                "sede": self.sede,
+                "productos": [ {
+                    "id": x.id,
+                    "cantidad": x.existencias
+                } for x in self.factura.productos ]
+            }
+            conn.post('/facturar/',data)
             self.loadListaProductos(self.view)
             self.factura.productos = []
 
 def crearUsuario(ID,cursor,conexion):
     classes = [UsuarioVendedor,UsuarioAdministrativo,UsuarioSysAdmin]
-    cursor.execute(f'SELECT NIVEL,NOMBRE FROM USUARIOS WHERE ID={ID}')
     nivel = 0
     nombre = ''
-    for reg in cursor.fetchall():
+    info = conn.get(f'/usuario/{ID}')
+    for reg in info:
         nivel = reg[0]
         nombre = reg[1]
     if(nombre!=''):

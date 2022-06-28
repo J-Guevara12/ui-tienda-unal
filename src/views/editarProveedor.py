@@ -51,7 +51,7 @@ class EditarProveedor(Ui_Dialog):
     @pyqtSlot()
     def editarProveedorConfirmado(self):
         proveedor = Proveedor(self.inputNit.text(),self.inputEmpresa.text(),self.inputNombre.text(),self.inputEmail.text(),self.inputTelefono.text())
-        self.usuario.editarProveedor(proveedor)
+        self.usuario.editarProveedor(proveedor,self.proveedor.nit)
         self.window.close()
 
     @pyqtSlot(bool)
